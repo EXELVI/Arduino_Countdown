@@ -11,6 +11,14 @@
 #include "arduino_secrets.h"
 #include "icons.h"
 
+// Array of all bitmaps for convenience. (Total bytes used to store images in PROGMEM = 192)
+const int epd_bitmap_allArray_LEN = 4;
+const unsigned char *epd_bitmap_allArray[4] = {
+    epd_bitmap_wifi,
+    epd_bitmap_wifi_1,
+    epd_bitmap_wifi_2,
+    epd_bitmap_wifi_off};
+
 const char *ssid = SECRET_SSID;
 const char *pass = SECRET_PASS;
 
@@ -39,7 +47,7 @@ void setup()
     display.setCursor(0, 0);
     display.print("Countdown to");
     display.setCursor(0, 10);
-    display.print("2024-07-27 23:59:59"); //This date is an example 
+    display.print("2024-07-27 23:59:59"); // This date is an example
     display.display();
     delay(2000);
 
@@ -121,9 +129,24 @@ void loop()
             updatedWithNTP = true;
         }
     }
+    display.clearDisplay();
+    RTC.getTime(currentTime);
 
-    RTCTime now;
-    RTC.getTime(now);
+    display.setCursor(0, 0);
+
+    int adjustedHour = (currentTime.getHour() + 2) % 24;
+    String hours = String(adjustedHour);
+    String minutes = String(currentTime.getMinutes());
+    String seconds = String(currentTime.getSeconds());
+
+    display.print(hours.length() == 1 ? "0" + hours : hours);
+    display.print(":");
+    display.print(minutes.length() == 1 ? "0" + minutes : minutes);
+    display.print(":");
+    display.print(seconds.length() == 1 ? "0" + seconds : seconds);
+    display.setCursor(0, 10);
+    display.setTextSize(1);
+
     RTCTime targetDate;
     targetDate.setYear(2024);
     targetDate.setMonthOfYear(Month::JULY);
@@ -132,7 +155,7 @@ void loop()
     targetDate.setMinute(59);
     targetDate.setSecond(59);
 
-    long secondsLeft = (targetDate.getUnixTime() - now.getUnixTime());
+    long secondsLeft = (targetDate.getUnixTime() - currentTime.getUnixTime());
 
     if (secondsLeft > 0)
     {
@@ -143,19 +166,46 @@ void loop()
         long minutes = secondsLeft / 60;
         long seconds = secondsLeft % 60;
 
-        Serial.print(days);
-        Serial.print(" days, ");
-        Serial.print(hours);
-        Serial.print(" hours, ");
-        Serial.print(minutes);
-        Serial.print(" minutes, ");
-        Serial.print(seconds);
-        Serial.println(" seconds");
-    }
-    else
-    {
-        Serial.println("-");
-    }
+        display.print(days);
+        display.print("d ");
+        display.print(hours);
+        display.print("h ");
+        display.print(minutes);
+        display.print("m ");
+        display.print(seconds);
+        display.print("s");
 
-    delay(1000);
+        else
+        {
+            Serial.println("-");
+        }
+
+        printWifiStrenght();
+        display.display();
+        delay(1000);
+    }
 }
+
+    void printWifiStrenght()
+    {
+        if (status != WL_CONNECTED)
+        {
+            display.drawBitmap(100, 0, epd_bitmap_allArray[3], 20, 10, WHITE);
+        }
+        else
+        {
+            int32_t rssi = WiFi.RSSI();
+            if (rssi > -55)
+            {
+                display.drawBitmap(100, 0, epd_bitmap_allArray[0], 20, 10, WHITE);
+            }
+            else if (rssi > -70)
+            {
+                display.drawBitmap(100, 0, epd_bitmap_allArray[1], 20, 10, WHITE);
+            }
+            else
+            {
+                display.drawBitmap(100, 0, epd_bitmap_allArray[2], 20, 10, WHITE);
+            }
+        }
+    }
