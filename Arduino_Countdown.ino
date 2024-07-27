@@ -29,13 +29,20 @@ int status = WL_IDLE_STATUS;
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP);
 RTCTime currentTime;
-
+RTCTime targetDate;
 bool updatedWithNTP = false;
 
 void setup()
 {
     Serial.begin(9600);
     RTC.begin();
+
+    targetDate.setYear(2024);
+    targetDate.setMonthOfYear(Month::JULY);
+    targetDate.setDayOfMonth(28);
+    targetDate.setHour(14);
+    targetDate.setMinute(07);
+    targetDate.setSecond(59);
 
     RTCTime savedTime;
     RTC.getTime(savedTime);
@@ -47,7 +54,23 @@ void setup()
     display.setCursor(0, 0);
     display.print("Countdown to");
     display.setCursor(0, 10);
-    display.print("2024-07-27 23:59:59"); // This date is an example
+    int year = targetDate.getYear();
+    int month = Month2int(targetDate.getMonth());
+    int day = targetDate.getDayOfMonth();
+    int hour = targetDate.getHour();
+    int minute = targetDate.getMinutes();
+    int second = targetDate.getSeconds();
+    display.print(year);
+    display.print("/");
+    display.print(month);
+    display.print("/");
+    display.print(day);
+    display.print(" ");
+    display.print(hour);
+    display.print(":");
+    display.print(minute);
+    display.print(":");
+    display.print(second);
     display.display();
     delay(2000);
 
@@ -147,65 +170,82 @@ void loop()
     display.setCursor(0, 10);
     display.setTextSize(1);
 
-    RTCTime targetDate;
-    targetDate.setYear(2024);
-    targetDate.setMonthOfYear(Month::JULY);
-    targetDate.setDayOfMonth(27);
-    targetDate.setHour(23);
-    targetDate.setMinute(59);
-    targetDate.setSecond(59);
-
     long secondsLeft = (targetDate.getUnixTime() - currentTime.getUnixTime());
-
+    display.setTextSize(2);
+    display.setCursor(0, 10);
     if (secondsLeft > 0)
     {
         long days = secondsLeft / 86400;
-        secondsLeft %= 86400;
-        long hours = secondsLeft / 3600;
-        secondsLeft %= 3600;
-        long minutes = secondsLeft / 60;
-        long seconds = secondsLeft % 60;
+        long hours = (secondsLeft % 86400) / 3600;
+        long minutes = (secondsLeft % 3600) / 60;
+        long secs = secondsLeft % 60;
 
-        display.print(days);
-        display.print("d ");
-        display.print(hours);
-        display.print("h ");
-        display.print(minutes);
-        display.print("m ");
-        display.print(seconds);
-        display.print("s");
-
-        else
+        if (days > 0)
         {
-            Serial.println("-");
+            display.print(days);
+            display.print("d ");
+            display.setTextSize(1);
         }
-
-        printWifiStrenght();
-        display.display();
-        delay(1000);
+        if (hours > 0)
+        {
+            display.print(hours);
+            display.print("h ");
+            display.setTextSize(1);
+        }
+        if (minutes > 0)
+        {
+            display.print(minutes);
+            display.print("m ");
+            display.setTextSize(1);
+        }
+        display.print(secs);
+        display.print("s");
     }
+    else
+    {
+        display.print("End!");
+    }
+
+    display.setTextSize(1);
+    display.setCursor(0, 25);
+    display.print(targetDate.getYear());
+    display.print("/");
+    display.print(Month2int(targetDate.getMonth()) > 9 ? Month2int(targetDate.getMonth()) : "0" + String(Month2int(targetDate.getMonth())));
+    display.print("/");
+    display.print(targetDate.getDayOfMonth() > 9 ? targetDate.getDayOfMonth() : "0" + String(targetDate.getDayOfMonth()));
+    display.print(" ");
+    display.print(targetDate.getHour() > 9 ? targetDate.getHour() : "0" + String(targetDate.getHour()));
+    display.print(":");
+    display.print(targetDate.getMinutes() > 9 ? targetDate.getMinutes() : "0" + String(targetDate.getMinutes()));
+    display.print(":");
+    display.print(targetDate.getSeconds() > 9 ? targetDate.getSeconds() : "0" + String(targetDate.getSeconds()));
+
+
+    printWifiStrenght();
+    display.display();
+    delay(1000);
 }
 
-    void printWifiStrenght()
+void printWifiStrenght()
+{
+    if (status != WL_CONNECTED)
     {
-        if (status != WL_CONNECTED)
+        display.drawBitmap(100, 0, epd_bitmap_allArray[3], 20, 10, WHITE);
+    }
+    else
+    {
+        int32_t rssi = WiFi.RSSI();
+        if (rssi > -55)
         {
-            display.drawBitmap(100, 0, epd_bitmap_allArray[3], 20, 10, WHITE);
+            display.drawBitmap(100, 0, epd_bitmap_allArray[0], 20, 10, WHITE);
+        }
+        else if (rssi > -70)
+        {
+            display.drawBitmap(100, 0, epd_bitmap_allArray[1], 20, 10, WHITE);
         }
         else
         {
-            int32_t rssi = WiFi.RSSI();
-            if (rssi > -55)
-            {
-                display.drawBitmap(100, 0, epd_bitmap_allArray[0], 20, 10, WHITE);
-            }
-            else if (rssi > -70)
-            {
-                display.drawBitmap(100, 0, epd_bitmap_allArray[1], 20, 10, WHITE);
-            }
-            else
-            {
-                display.drawBitmap(100, 0, epd_bitmap_allArray[2], 20, 10, WHITE);
-            }
+            display.drawBitmap(100, 0, epd_bitmap_allArray[2], 20, 10, WHITE);
         }
     }
+}
