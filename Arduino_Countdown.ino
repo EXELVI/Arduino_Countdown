@@ -11,13 +11,17 @@
 #include "arduino_secrets.h"
 #include "icons.h"
 
-// Array of all bitmaps for convenience. (Total bytes used to store images in PROGMEM = 192)
-const int epd_bitmap_allArray_LEN = 4;
-const unsigned char *epd_bitmap_allArray[4] = {
-    epd_bitmap_wifi,
-    epd_bitmap_wifi_1,
-    epd_bitmap_wifi_2,
-    epd_bitmap_wifi_off};
+// Array of all bitmaps for convenience. (Total bytes used to store images in PROGMEM = 240)
+const int epd_bitmap_allArray_LEN = 7;
+const unsigned char *epd_bitmap_allArray[7] = {
+    epd_bitmap_wifi,                      // 20x10px
+    epd_bitmap_wifi_1,                    // 20x10px
+    epd_bitmap_wifi_2,                    // 20x10px
+    epd_bitmap_wifi_off,                  // 20x10px
+    epd_bitmap_exclamation_lg,            // 20x10px
+    epd_bitmap_exclamation_triangle_fill, // 32x23px
+    epd_bitmap_arrow_repeat               // 20x10px
+};
 
 const char *ssid = SECRET_SSID;
 const char *pass = SECRET_PASS;
@@ -31,6 +35,9 @@ NTPClient timeClient(ntpUDP);
 RTCTime currentTime;
 RTCTime targetDate;
 bool updatedWithNTP = false;
+bool warning = false;
+
+unsigned long syncIconStart = 0; //Display the sync icon for 1 second
 
 void setup()
 {
@@ -91,9 +98,15 @@ void setup()
     {
         if (savedTime.getYear() == 2000)
         {
-            Serial.println("RTC lost power, setting the time to 2024-07-27 12:00:00");
-            RTCTime timeToSet = RTCTime(2024, Month::JULY, 27, 12, 0, 0, DayOfWeek::WEDNESDAY, SaveLight::SAVING_TIME_INACTIVE);
-            RTC.setTime(timeToSet);
+            Serial.println("RTC lost power!");
+            warning = true;
+            display.clearDisplay();
+            display.setTextSize(1);
+            display.setCursor(0, 0);
+            display.print("RTC lost power!");
+            display.drawBitmap(0, 10, epd_bitmap_exclamation_triangle_fill, 32, 23, WHITE);
+            display.display();
+            delay(2000);
         }
         else
         {
@@ -141,9 +154,11 @@ void loop()
             {
                 RTCTime timeToSet = RTCTime(unixTime);
                 RTC.setTime(timeToSet);
+                syncIconStart = millis();
 
                 RTC.getTime(currentTime);
                 Serial.println("The RTC was just set to: " + String(currentTime));
+                warning = false;
             }
             else
             {
@@ -154,22 +169,7 @@ void loop()
     }
     display.clearDisplay();
     RTC.getTime(currentTime);
-
-    display.setCursor(0, 0);
-
-    int adjustedHour = (currentTime.getHour() + 2) % 24;
-    String hours = String(adjustedHour);
-    String minutes = String(currentTime.getMinutes());
-    String seconds = String(currentTime.getSeconds());
-
-    display.print(hours.length() == 1 ? "0" + hours : hours);
-    display.print(":");
-    display.print(minutes.length() == 1 ? "0" + minutes : minutes);
-    display.print(":");
-    display.print(seconds.length() == 1 ? "0" + seconds : seconds);
-    display.setCursor(0, 10);
-    display.setTextSize(1);
-
+    printStatusBar();
     long secondsLeft = (targetDate.getUnixTime() - currentTime.getUnixTime());
     display.setTextSize(2);
     display.setCursor(0, 10);
@@ -220,32 +220,68 @@ void loop()
     display.print(":");
     display.print(targetDate.getSeconds() > 9 ? targetDate.getSeconds() : "0" + String(targetDate.getSeconds()));
 
-
-    printWifiStrenght();
     display.display();
     delay(1000);
 }
+bool position1 = false; // there is an icon in position 1
+bool itsSyncIcon = false; // there is a sync icon
 
-void printWifiStrenght()
+void printStatusBar()
 {
+
+    display.setCursor(0, 0);
+
+    int adjustedHour = (currentTime.getHour() + 2) % 24;
+    String hours = String(adjustedHour);
+    String minutes = String(currentTime.getMinutes());
+    String seconds = String(currentTime.getSeconds());
+
+    display.print(hours.length() == 1 ? "0" + hours : hours);
+    display.print(":");
+    display.print(minutes.length() == 1 ? "0" + minutes : minutes);
+    display.print(":");
+    display.print(seconds.length() == 1 ? "0" + seconds : seconds);
+    display.setCursor(0, 10);
+    display.setTextSize(1);
+
+    
+
+    if (warning)
+    {
+        //        display.drawBitmap(93, 0, epd_bitmap_allArray[4], 20, 10, WHITE);
+        display.drawBitmap(position1 ? 93 : 80, 0, epd_bitmap_allArray[4], 20, 10, WHITE);
+        position1 = true;
+    }
+
+    if (syncIconStart > 0 && millis() - syncIconStart < 1000)
+    {
+        display.drawBitmap(position1 ? 93 : 80, 0, epd_bitmap_allArray[6], 20, 10, WHITE);
+        itsSyncIcon = true;
+        position1 = true;
+    } else {
+        if (position1 && itsSyncIcon) {
+            position1 = false;
+        }
+    }
+
     if (status != WL_CONNECTED)
     {
-        display.drawBitmap(100, 0, epd_bitmap_allArray[3], 20, 10, WHITE);
+        display.drawBitmap(110, 0, epd_bitmap_allArray[3], 20, 10, WHITE);
     }
     else
     {
         int32_t rssi = WiFi.RSSI();
         if (rssi > -55)
         {
-            display.drawBitmap(100, 0, epd_bitmap_allArray[0], 20, 10, WHITE);
+            display.drawBitmap(110, 0, epd_bitmap_allArray[0], 20, 10, WHITE);
         }
         else if (rssi > -70)
         {
-            display.drawBitmap(100, 0, epd_bitmap_allArray[1], 20, 10, WHITE);
+            display.drawBitmap(110, 0, epd_bitmap_allArray[1], 20, 10, WHITE);
         }
         else
         {
-            display.drawBitmap(100, 0, epd_bitmap_allArray[2], 20, 10, WHITE);
+            display.drawBitmap(110, 0, epd_bitmap_allArray[2], 20, 10, WHITE);
         }
     }
 }
