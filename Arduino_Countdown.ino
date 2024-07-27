@@ -8,7 +8,26 @@ void setup() {
   RTCTime savedTime;
   RTC.getTime(savedTime);
 
-  Serial.println(savedTime.getYear() + "/" + savedTime.getMonth() + "/" + savedTime.getDayOfMonth() + " " + savedTime.getHour() + ":" + savedTime.getMinute() + ":" + savedTime.getSecond());
+    int year = savedTime.getYear();
+    int month = Month2int(savedTime.getMonth());
+    int day = savedTime.getDayOfMonth();
+    int hour = savedTime.getHour();
+    int minute = savedTime.getMinutes();
+    int second = savedTime.getSeconds();
+    
+    Serial.print("Saved time: ");
+    Serial.print(year);
+    Serial.print("-");
+    Serial.print(month);
+    Serial.print("-");
+    Serial.print(day);
+    Serial.print(" ");
+    Serial.print(hour);
+    Serial.print(":");
+    Serial.print(minute);
+    Serial.print(":");
+    Serial.println(second);
+    
   if (!RTC.isRunning()) {
     if (savedTime.getYear() == 2000) {
       
