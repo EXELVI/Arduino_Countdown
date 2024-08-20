@@ -283,5 +283,5 @@ void printStatusBar()
         {
             display.drawBitmap(110, 0, epd_bitmap_allArray[2], 20, 10, WHITE);
         }
-    }
+    }   
 }
